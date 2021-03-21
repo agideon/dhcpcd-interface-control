@@ -1,0 +1,3 @@
+*
+!.dhcpcd-interface-control.ignore
+!dhcpcd.exit-hook
