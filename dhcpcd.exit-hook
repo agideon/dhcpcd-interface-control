@@ -1,0 +1,61 @@
+#!/bin/sh
+
+#echo "BEGIN: ============== $0 dhcpcd.exit-hook `date`" >> /tmp/dhcpcd.log
+# So I don't have to remember these:
+#printenv >> /tmp/dhcpcd.log
+
+service="daemon"
+
+# Is this too close to what the system software may someday use?
+# Would it be better to use the Redhat-ish directory of /etc/sysconfig/network-scripts?
+configdir="/etc/dhcpcd.d"
+
+rulefilename="${configdir}/rule-${interface}"
+routefilename="${configdir}/route-${interface}"
+
+
+# Either add or del the rules or routes, depending upon the arguments passed.
+executefile()
+{
+    cmdprefix="$1"
+    filename="$2"
+    localreason="$3"
+    if [ -f "$filename" ]
+    then
+	while read cmdsuffix
+	do
+	    cmdsuffix=`echo ${cmdsuffix} |sed -e 's/\#.$//g' -e 's/^\s*//g' -e 's/\s*$//g'`
+	    if [ "${cmdsuffix}" != "" ]
+	    then
+		   cmd="$cmdprefix $cmdsuffix"
+		   logger -p ${service}.info -t interface-control "Execute: $cmd for reason ${localreason}"
+		   { ${cmd} 2>&1 1>&3 3>&- | logger -p ${service}.err -t interface-control ; } 3>&1 1>&2 | logger -p ${service}.info -t interface-control
+	    fi
+	done < "$filename"
+    else
+	logger -p ${service}.info -t interface-control "$filename not found"
+    fi
+}
+
+# Build a reasonable comment for logging:
+comment="on ${interface}"
+if [ "${new_ip_address}" != "" ]; then comment="${comment} with new IP ${new_ip_address}"; fi
+if [ "${old_ip_address}" != "" ]; then comment="${comment} with old IP ${old_ip_address}"; fi
+
+case "${reason}" in
+
+    # Only act when the IP is actually specified, either BOUND (dynamic) or STATIC (static):
+    BOUND|STATIC)
+	executefile "ip rule add" ${rulefilename} "add rules for ${reason} ${comment}"
+	executefile "ip route add" ${routefilename} "add routes for ${reason} ${comment}"
+    ;;
+
+    # Note: Very redundant; deletion of rules and routes are repeated excessively.  Bad? Excessive?
+    NOCARRIER|EXPIRE|FAIL|RELEASE|DEPARTED)
+	executefile "ip rule del" ${rulefilename} "remove rules for ${reason} ${comment}"
+	executefile "ip route del" ${routefilename} "remove routes for ${reason} ${comment}"
+    ;;
+esac	
+
+
+#echo "END: ============== $0 dhcpcd.exit-hook `date`" >> /tmp/dhcpcd.log
