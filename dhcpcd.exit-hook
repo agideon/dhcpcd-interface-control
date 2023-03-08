@@ -24,7 +24,7 @@ executefile()
     then
 	while read cmdsuffix
 	do
-	    cmdsuffix=`echo ${cmdsuffix} |sed -e 's/\#.*$//g' -e 's/^\s*//g' -e 's/\s*$//g'`
+	    cmdsuffix=`echo ${cmdsuffix} |sed -e 's/\#.*$//g' -e 's/^\s*//g' -e 's/\s*$//g' | envsubst`
 	    if [ "${cmdsuffix}" != "" ]
 	    then
 		   cmd="$cmdprefix $cmdsuffix"
