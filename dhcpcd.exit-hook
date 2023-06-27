@@ -41,17 +41,33 @@ executefile()
 comment="on ${interface}"
 if [ "${new_ip_address}" != "" ]; then comment="${comment} with new IP ${new_ip_address}"; fi
 if [ "${old_ip_address}" != "" ]; then comment="${comment} with old IP ${old_ip_address}"; fi
+if [ "${new_network_number}" != "" ]; then comment="${comment} with new network ${new_network_number}"; fi
+if [ "${old_network_number}" != "" ]; then comment="${comment} with old network ${old_network_number}"; fi
+if [ "${new_subnet_cidr}" != "" ]; then comment="${comment} with new cidr ${new_subnet_cidr}"; fi
+if [ "${old_subnet_cidr}" != "" ]; then comment="${comment} with old cidr ${old_subnet_cidr}"; fi
+if [ "${new_routers}" != "" ]; then comment="${comment} with new router ${new_routers}"; fi
+if [ "${old_routers}" != "" ]; then comment="${comment} with old router ${old_routers}"; fi
 
 case "${reason}" in
 
     # Only act when the IP is actually specified, either BOUND (dynamic) or STATIC (static):
     BOUND|STATIC)
+	export subnet_cidr=${new_subnet_cidr}
+	export network_number=${new_network_number}
+	export ip_address=${new_ip_address}
+	export routers=${new_routers}
 	executefile "ip rule add" ${rulefilename} "add rules for ${reason} ${comment}"
 	executefile "ip route add" ${routefilename} "add routes for ${reason} ${comment}"
     ;;
 
     # Note: Very redundant; deletion of rules and routes are repeated excessively.  Bad? Excessive?
+    # It seems like only EXPIRE has the old_* variables.  They are missing for NOCARRIER and DEPARTED.
+    # I'm not sure about FAIL or RELEASE yet.
     NOCARRIER|EXPIRE|FAIL|RELEASE|DEPARTED)
+	export subnet_cidr=${old_subnet_cidr}
+	export network_number=${old_network_number}
+	export ip_address=${old_ip_address}
+	export routers=${old_routers}
 	executefile "ip rule del" ${rulefilename} "remove rules for ${reason} ${comment}"
 	executefile "ip route del" ${routefilename} "remove routes for ${reason} ${comment}"
     ;;
